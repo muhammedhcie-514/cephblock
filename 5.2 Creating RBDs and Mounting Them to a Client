@@ -1,0 +1,76 @@
+In this exercise, you will create an RBD resource pool named block, and two RBDs, rbd1
+and rbd2. The capacities of rbd1 and rbd2 are 3 GB and 5 GB, respectively, and they are
+mounted to the /mnt/rbd1 and /mnt/rbd2 directories on the client host.
+
+Step 1 Create an RBD resource pool.
+Run the following commands to create a resource pool block and set it to rbd:
+[ceph: root@ceph01 /]# ceph osd pool create block
+[ceph: root@ceph01 /]# ceph osd pool application enable block rbd
+
+
+Step 2 Create RBDs.
+Run the following commands to create two RBDs with capacities of 3 GB and 5 GB:
+[ceph: root@ceph01 /]# rbd create --size 3G block/rbd1
+[ceph: root@ceph01 /]# rbd create --size 5G block/rbd2
+[ceph: root@ceph01 /]# rbd info /block/rdb1
+
+
+Step 3 Create a user.
+Create the block user and grant the read and write permissions on all RBDs to it.
+[ceph: root@ceph01 /]# ceph auth add client.block mon 'allow r' osd 'allow rwx pool=block'
+
+command:
+ceph auth get client.block
+
+Export the keyring file of the block user as ceph.client.block.keyring.
+[ceph: root@ceph01 /]# ceph auth get client.block -o ceph.client.block.keyring
+Send the file to the /etc/ceph directory on the client.
+
+scp ceph.client.block.keyring root@192.168.0.24:/etc/ceph/
+
+Step 4 Mount the RBDs to the client.
+Install the Ceph client software on the client.
+[root@client ~]# yum install -y ceph
+Run the rbd commands to map the created RBDs to the client.
+[root@client ~]# rbd map block/rbd1 --name client.block
+[root@client ~]# rbd map block/rbd2 --name client.block
+
+
+After the mapping is complete, check whether the corresponding devices can be viewed.
+
+lsblk
+
+
+Format and mount the mapped devices to the specified directory as follows:
+[root@client ~]# mkdir -p /mnt/rbd{1,2}
+[root@client ~]# mkfs.xfs /dev/rbd0
+[root@client ~]# mkfs.xfs /dev/rbd1
+[root@client ~]# mount /dev/rbd0 /mnt/rbd1
+[root@client ~]# mount /dev/rbd1 /mnt/rbd2
+
+
+Once mounted, the directory information is as follows:
+
+df -h
+
+Step 5 Set the RBDs to be automatically mounted.
+Add the following content to the /etc/fstab file:
+
+/dev/rbd/block/rbd1 /mnt/rbd1 xfs defaults,_netdev 0 0
+/dev/rbd/block/rbd2 /mnt/rbd2 xfs defaults,_netdev 0 0
+
+Add the following content to the /etc/ceph/rbdmap file:
+block/rbd1 id=block,keyring=/etc/ceph/ceph.client.block.keyring
+block/rbd2 id=block,keyring=/etc/ceph/ceph.client.block.keyring
+
+
+Set the rbdmap service to automatically start upon system startup.
+systemctl enable rdbmap
+
+Restart the client and check whether the client automatically mounts the two RBDs upon
+startup.
+If the mounting fails, check whether the RBDs have the exclusive lock. If so, delete it and
+mount them again.
+
+rbd lock list block/rbd2
+
