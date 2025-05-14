@@ -1,0 +1,17 @@
+In this exercise, rbd1 created in section 5.2 will be expanded to 5 GB.
+Step 1 Expand the capacity of rbd1 to 5 GB.
+Run the following command to expand the capacity of rbd1 from 3 GB to 5 GB:
+[ceph: root@ceph01 /]# rbd --pool block resize rbd1 --size 5G
+Check whether the RBD capacity has been expanded:
+[ceph: root@ceph01 /]# rbd --pool block du rbd1
+
+Step 2 Expand the client capacity.
+The RBD capacity expansion cannot take effect directly on the client. You need to expand
+the partition capacity on the client to complete the capacity expansion. The details are as
+follows:
+[root@client ~]# xfs_growfs /dev/rbd0
+
+
+Check whether the partition capacity has been expanded:
+
+df -h 
