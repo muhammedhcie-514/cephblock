@@ -1,0 +1,59 @@
+In this exercise, you will create snapshot snap1 for rbd2, create a new RBD based on
+snap1, and name the RBD rbd3.
+Step 1 Make preparations.
+Create a test file named test in /mnt/rbd2 on the client and enter "this is a test file". The
+detailed operations are as follows:
+
+Step 2 Create a snapshot.
+Create snapshot snap1 for rbd2.
+[ceph: root@ceph01 /]# rbd snap create block/rbd2@snap1
+
+Step 3 Test the snapshot function.
+Delete the file test from /mnt/rbd2, roll back the snapshot, and check whether test can
+be restored.
+Delete test on the client and cancel the mapping and mounting of the RBD. The detailed
+operations are as follows:
+[root@client ~]# umount /mnt/rbd2
+[root@client ~]# rbdmap unmap block/rbd2
+
+Run the following command on the Ceph management node to roll back the snapshot:
+[ceph: root@ceph01 /]# rbd snap rollback block/rbd2@snap1
+
+Map and mount the RBD on the client again and check whether the test file exists.
+
+rbdmap map block/rbd2 --name client.block
+
+ls /mnt/rbdz
+
+
+
+Step 4 Create a clone volume using the snapshot.
+Set the snapshot to the protection mode.
+[ceph: root@ceph01 /]# rbd snap protect block/rbd2@snap1
+Create the clone volume rbd3 for snap1.
+[ceph: root@ceph01 /]# rbd clone block/rbd2@snap1 block/rbd3
+
+Convert the clone volume to an independent RBD.
+[ceph: root@ceph01 /]# rbd flatten block/rbd3
+
+On the client, map the converted rbd3 to the client.
+[root@client ~]# rbd map block/rbd3 --name client.block
+Unmount the base volume of the clone volume and mount the clone volume to the
+/mnt/rbd3 directory.
+[root@client ~]# umount /mnt/rbd2
+[root@client ~]# mkidr /mnt/rbd3
+[root@client ~]# mount /dev/rbd2 /mnt/rbd3
+
+After the mounting is complete, check whether the test file exists.
+
+lsblk
+
+
+⚫ Question: Is it mandatory to unmount the base volume? And Why?
+⚫ Answer: This is a mandatory operation in this exercise because the base volume is
+formatted to the XFS format and its UUID is the same as that of the clone volume.
+When the clone volume is being mounted, the system considers the clone volume
+has been mounted and will report an error. For other file systems, you do not need
+to unmount the base volume.
+
+
